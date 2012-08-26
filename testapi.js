@@ -195,6 +195,15 @@ var waApi = function(username, password, opt) {
     }.bind(this));
     
     this.reader.addListener('stanza', function handleStanza(node) {
+        if(node.tag == "error" && node.getAttributeValue("code") == "404" && node.getAttributeValue("type") == "cancel")
+        {
+            //<error code="404" type="cancel"> are children of <iq type="error", and I think we can safely ignore them as long as we emit the error.. ??
+            return;
+        }
+        if(node.tag == "item-not-found" && node.getAttributeValue("xmlns") == "urn:ietf:params:xml:ns:xmpp-stanzas") {
+            // same as above
+            return;
+        }
         console.log("received stanza: " + node);
     }.bind(this));
     
@@ -323,11 +332,26 @@ var waApi = function(username, password, opt) {
                     this.handlePing(idx);
                 }
                 break;
-            case "result":
-                //break;
             case "error":
+/*
+<iq from="+9597896522@s.whatsapp.net" id="last_14" type="error">
+    <error code="404" type="cancel">
+    <item-not-found xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">
+    </item-not-found>
+    </error>
+</iq>
+*/              this.emit('iqerror', data);
+                break;
+            case "result":
+                var queryNode = data.getChild("query");
+                if(queryNode && queryNode.getAttributeValue("xmlns") === "jabber:iq:last") {
+                    this.emit('iqquerylast', { from: jid, seconds: queryNode.getAttributeValue("seconds") });
+                    break;
+                }
+                // intentional fall thru for now
                 //break;
             case "set":
+                // intentional fall thru for now
                 //break;
             default:
                 console.log("received iq type: " +iqType + ": " + data);
@@ -364,6 +388,7 @@ var waApi = function(username, password, opt) {
         var fromAttribute = messageNode.getAttributeValue("from");
         var author = messageNode.getAttributeValue("author");
         var typeAttribute = messageNode.getAttributeValue("type");
+        var visibleName = "";
         
         if(typeAttribute === "error") {
             console.log("*** My God, it's full of Errors.");
@@ -422,13 +447,14 @@ var waApi = function(username, password, opt) {
                         break;
                     case "notify":
                         console.log("*** " + fromAttribute + " sets notify_name=" + messageChildren[childNode].getAttributeValue("name"));
+                        visibleName = messageChildren[childNode].getAttributeValue("name");
                         break;
                     case "server":
                         console.log("*** Server says it has accepted message " + msgId);
                         this.emit('serverAccept', { from: fromAttribute, id: msgId });
                         emitMessage = false;
                         break;
-                    case "x": // who the fuck named a node "x"?
+                    case "x": // why did someone called a stanza name "x"? what does that even -mean-?
                         var xmlns = messageChildren[childNode].getAttributeValue("xmlns");
                         if(xmlns === "jabber:x:event" && msgId) {
                             console.log("*** Message " + msgId + " sent to " + fromAttribute);
@@ -540,7 +566,7 @@ waApi.prototype.sendPing = function() {
 // TODO: use getLastOnline
 waApi.prototype.getLastOnline = function(jid) {
     this.sendSubscribe(jid);
-    var idx = this.makeid("last_");
+    var idx = this.makeId("last_");
     var query = new ProtocolTreeNode("query", { "xmlns":"jabber:iq:last" });
     var iqNode = new ProtocolTreeNode("iq", { "id": idx, "type": "get", "to": jid }, [query]);
     this.writer.write(iqNode);

@@ -163,7 +163,7 @@ var waApi = function(username, password, opt) {
         password: password,
         resource: "iPhone-2.8.2-5222", // Symbian-2.6.61-443
         domain: "s.whatsapp.net",
-        displayName: "Eric Blade"
+        displayName: opt.displayName
     };
     this.socket = net.createConnection(5222, 'bin-short.whatsapp.net');
     this.writer = new BinTreeNodeWriter(this.socket, dictionary, { debug: this.debug });
@@ -190,11 +190,18 @@ var waApi = function(username, password, opt) {
         this.emit('close');
     }.bind(this));
     
-    this.socket.addListener('error', function socketError() {
-        console.log("***************** SOCKET ERROR ********************");
+    this.socket.addListener('error', function socketError(err) {
+        console.log("***************** SOCKET ERROR ********************" + JSON.stringify(err));
+        this.noReconnect = true;
     }.bind(this));
     
     this.reader.addListener('stanza', function handleStanza(node) {
+        if(node.tag == "failure" && node.getAttributeValue("xmlns") == "urn:ietf:params:xml:ns:xmpp-sasl" && node.getChild("not-authorized"))
+        {
+            this.emit('notAuthorized');
+            this.noReconnect = true;
+            this.socket.end();
+        }
         if(node.tag == "error" && node.getAttributeValue("code") == "404" && node.getAttributeValue("type") == "cancel")
         {
             //<error code="404" type="cancel"> are children of <iq type="error", and I think we can safely ignore them as long as we emit the error.. ??
@@ -211,52 +218,7 @@ var waApi = function(username, password, opt) {
         console.log("**** Decoding Challenge");
         var challenge = base64.base64.decode(node.data.toString("binary"));
         console.log("*** Challenge = " + challenge);
-        
-        /*
-        var i = challenge.indexOf('nonce="');
-        i += 'nonce="'.length;
-        var j = challenge.indexOf('"', i);
-        var nonce = challenge.substring(i, j);
-        console.log("nonce=" + nonce);
-        var cnonce = uuid.v4();
-        console.log("cnonce=" + cnonce);
-        var nc = "00000001";
-        console.log("nc=" + nc);
-        var digest_uri = "xmpp/" + this.loginInfo.domain;
-        console.log("digest_uri=" + digest_uri);
-        
-        var bos = Buffer(this.loginInfo.username + ":" + this.loginInfo.domain + ":" + this.loginInfo.password, "binary");
-        console.log("bos a=" + bos.toString("binary"));
-        bos = Buffer(this.md5Digest(bos.toString("binary")) + ":" + nonce + ":" + cnonce);
-        console.log("bos b=" + bos.toString("binary"));
-        
-        var A1 = bos;
-        var A2 = "AUTHENTICATE:" + digest_uri;
-        console.log("A2=" + A2.toString("binary"));
-        var KD = Buffer(bytesToHex(this.md5Digest(A1.toString("binary"))) + ":" + nonce + ":" + nc + ":" + cnonce + ":auth:" + bytesToHex(this.md5Digest(A2)));
-        console.log("KD=" + KD.toString("binary"));
-        
-        var response = bytesToHex(this.md5Digest(KD));
-        var bigger_response = "";
-        bigger_response += "realm=\"";
-        bigger_response += this.loginInfo.domain;
-        bigger_response += "\",response=";
-        bigger_response += response;
-        bigger_response += ",nonce=\"";
-        bigger_response += nonce;
-        bigger_response += "\",digest-uri=\"";
-        bigger_response += digest_uri;
-        bigger_response += "\",cnonce=\"";
-        bigger_response += cnonce;
-        bigger_response += "\",qop=auth";
-        bigger_response += ",username=\"";
-        bigger_response += this.loginInfo.username;
-        bigger_response += "\",nc=";
-        bigger_response += nc;
-        
-        console.log("response should be something like: " + bigger_response);
-        */
-        
+                
         var i = challenge.indexOf('nonce="');
         i += 'nonce="'.length;
         var j = challenge.indexOf('"', i);
@@ -298,21 +260,12 @@ var waApi = function(username, password, opt) {
         this.sendAvailableForChat();
         //this.sendCustomStatus("GO OPEN WEBOS!");
         
-// $next = "\x00\x12\xf8\x05\x74\xa2\xa3\x61\xfc\x0a\x41\x68\x6d\x65\x64\x20\x4d\x6f\x68\x64
-// \x00\x15\xf8\x06\x48\x43\x05\xa2\x3a\xf8\x01\xf8\x04\x7b\xbd\x4d\xf8\x01\xf8\x03\x55\x61\x24
-// \x00\x12\xf8\x08\x48\x43\xfc\x01\x32\xa2\x3a\xa0\x8a\xf8\x01\xf8\x03\x1f\xbd\xb1";
-// <presence type="unavailable" name="ahmed Mohd">
-// <iq id="1" type="get"> <query xmlns="jabber:iq:privacy"> <list name="default">
-// <iq id="2" type="get" to="s.whatsapp.net"> <config xmlns="urn:xmpp:whatsapp:push">
     }.bind(this));
     
     this.reader.addListener('loggedin', function loggedIn(data) {
         console.log("*** Successfully logged in.  Account status: " + data.getAttributeValue("status"));
         console.log("*** Creation Timestamp: " + data.getAttributeValue("creation"));
         console.log("*** Expiration Timestamp: " + data.getAttributeValue("expiration"));
-        //if(this.interval)
-          //  clearInterval(this.interval);
-        //this.interval = setInterval(this.sendPing.bind(this), 180000);
         this.emit('loggedin');
     }.bind(this));
     
@@ -551,16 +504,6 @@ waApi.prototype.makeId = function(prefix) {
     //    idx = this.iqId.toString(16);
     //}
     return idx;
-}
-
-// TODO: use sendPing
-waApi.prototype.sendPing = function() {
-    console.log("*** Sending server ping");
-    //var idx = this.makeId("ping_");
-    //var pingNode = new ProtocolTreeNode("ping", { "xmlns": "w:p" });
-    //var iqNode = new ProtocolTreeNode("iq", { "id": idx, "type": "get", "to": this.loginInfo.domain }, [ pingNode ]);
-    //this.writer.write(iqNode);
-    this.socket.write(" ", "binary");
 }
 
 // TODO: use getLastOnline

@@ -1,3 +1,22 @@
+var fs = require('fs');
+
+var log = {
+    log: function(str) {
+        var d = new Date();
+        var dt = (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes();
+        fs.open('/tmp/main.log', 'a', function(err, file) {
+            fs.write(file, dt + ":" + str);
+        });
+    },
+    stream: function(str) {
+        var d = new Date();
+        var dt = (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes();
+        fs.open('/tmp/stream.log', 'a', function(err, file) {
+            fs.write(file, dt + ":" + str);
+        });
+    }
+};
+
 var EventEmitter = require('events').EventEmitter;
 
 if(process.version == "v0.2.3") {
@@ -10,7 +29,6 @@ if(process.version == "v0.2.3") {
 /* ProtocolTreeNode -- just a basic representation of a XML node */
 
 var ProtocolTreeNode = function(tag, attributes, children, data) {
-    //console.log("constructor", tag, attributes, children, data);
     this.tag = tag;
     this.attributes = attributes;
     this.children = children;
@@ -93,9 +111,7 @@ ProtocolTreeNode.prototype.getAllChildren = function(tag) {
 /* BinTreeNodeReader -- give it an input stream, and it should be able to read data into something we can process */
 
 var BinTreeNodeReader = function(inputstream, dictionary, opt) {
-    console.log("opt=" + JSON.stringify(opt));
     this.debug = opt ? opt.debug : false;
-    console.log("*** Constructing BinTreeNodeReader debug=" + this.debug);
     this.tokenMap = dictionary;
     this.rawIn = inputstream;
     this.inn = new Buffer(0);
@@ -108,37 +124,25 @@ var BinTreeNodeReader = function(inputstream, dictionary, opt) {
 util.inherits(BinTreeNodeReader, EventEmitter);
 
 BinTreeNodeReader.prototype.streamStart = function() {
-    console.log("*** Starting Read on Stream");
     this.rawIn.addListener('data', function dataReceived(data) {
-        //console.log("recv: " + data);
-        //this.inn = new Buffer(data, "binary");
         this.inn = data;
         if(!this.streamStarted) {
             var out = "";
             for(var x = 0; x < this.inn.length; x++) {
-                //out += this.inn.readUInt8(x) + " ";
                 out += this.inn[x] + " ";
             }
-            //console.log(out);
             var stanzaSize = this.readInt16();
-            //console.log("stanzaSize=" + stanzaSize);
-            //this.fillBuffer(stanzaSize);
             var tag = this.readInt8();
-            //console.log("tag=" + tag);
             var size = this.readListSize(tag);
-            //console.log("list size=" + size);
             tag = this.inn[this.innPointer++];
             if(tag != 1) {
                 throw("Expecting tag 1 (STREAM_START) received " + tag);
             }
-            console.log("*** Found STREAM_START");
             var attribCount = (size - 2 + size % 2) / 2;
             var attributes = this.readAttributes(attribCount);
-            //console.log("attributes=" + JSON.stringify(attributes));
             this.streamStarted = true;
         }
         for(var x = this.innPointer; x < this.inn.length; x++) {
-            console.log("getting next tree at character " + this.innPointer + " of " + this.inn.length);
             var next = this.nextTree();
             x = this.innPointer;
         }
@@ -149,55 +153,38 @@ BinTreeNodeReader.prototype.streamStart = function() {
 
 BinTreeNodeReader.prototype.nextTree = function() {
     var stanzaSize = this.readInt16();
-    console.log("next stanzaSize=" + stanzaSize);
     return this.nextTreeInternal();
 }
 
 BinTreeNodeReader.prototype.nextTreeInternal = function() {
     var node;
-    //console.log("**** nextTreeInternal");
     var b = this.readInt8();
-    //console.log(this.innPointer + " junk list tag? " + b);
     var size = this.readInt8();
-    //console.log("size=" + size);
-    //var buf = Buffer(size);
-    //this.inn.copy(buf, 0, this.innPointer, this.innPointer + size);
-    //this.innPointer += size;
     
     b = this.readInt8();
     if(b == 2) {
-        console.log("Stream closed, received tag 2");
+        log.log("** Stream closed, received tag 2");
+        log.stream("** Stream closed, received tag 2");
         return undefined;
     }
-    //console.log(this.innPointer + " b = " + b);
     var tag = this.readString(b);
-    //console.log("tag=" + tag);
     if(size == 0 || !tag) {
         throw("nextTree sees 0 list or null tag");
     }
     var attribCount = (size - 2 + size % 2) / 2;
-    //console.log("attribCount=" + attribCount + " " + size % 2);
     attribs = this.readAttributes(attribCount);
-    //console.log("attribs=" + JSON.stringify(attribs));
     if(size % 2 == 1) {
-        //console.log("creating node (1)");
         node = new ProtocolTreeNode(tag, attribs);
     }
     if(!node) {
         b = this.readInt8();
         if(this.isListTag(b)) {
-            //console.log("*** reading list");
-            //console.log("creating node(2)");
             node = new ProtocolTreeNode(tag, attribs, this.readList(b));
-            //return new ProtocolTreeNode(tag, attribs, this.readList(b));
-            //console.log("*** finished reading list");
         }
         if(!node) {
-            //console.log("creating node(3)");
             node = new ProtocolTreeNode(tag, attribs, undefined, this.readString(b));
         }
     }
-    //console.log("node.tag=" + node.tag);
     
     switch(node.tag) {
         case "challenge":
@@ -229,6 +216,7 @@ BinTreeNodeReader.prototype.nextTreeInternal = function() {
             this.emit('stanza', node);
             break;
     }
+    log.stream("incoming:\n" + node);
     return node;
 }
 
@@ -238,7 +226,6 @@ BinTreeNodeReader.prototype.isListTag = function(b) {
 
 BinTreeNodeReader.prototype.readList = function(token) {
     var size = this.readListSize(token);
-    //console.log("reading list of size " + size);
     var listx = [];
     for(var i = 0; i < size; i ++) {
         listx.push(this.nextTreeInternal());
@@ -247,24 +234,14 @@ BinTreeNodeReader.prototype.readList = function(token) {
 }
 
 BinTreeNodeReader.prototype.readInt8 = function() {
-    //return this.inn.readUInt8(this.innPointer++);
     return this.inn[this.innPointer++];
 }
 
 BinTreeNodeReader.prototype.readInt16 = function() {
-    //console.log("readInt16:" + (this.inn.charCodeAt(this.innPointer) + this.inn.charCodeAt(this.innPointer+1)));
-    //var value = this.inn.charCodeAt(this.innPointer) + this.inn.charCodeAt(this.innPointer+1);
-    //this.innPointer += 2;
-    //return value;
     return this.readInt8() + this.readInt8();
 }
 
 BinTreeNodeReader.prototype.readInt24 = function() {
-    //var int1 = this.inn[this.innPointer++];
-    //var int2 = this.inn[this.innPointer++];
-    //var int3 = this.inn[this.innPointer++];
-    //value = (int1 << 16) + (int2 << 8) + (int3 << 0);
-    //return value;
     return this.readInt8() + this.readInt8() + this.readInt8();
 }
 
@@ -293,11 +270,8 @@ BinTreeNodeReader.prototype.fillBuffer = function(size) {
 BinTreeNodeReader.prototype.readAttributes = function(attribCount) {
     var attribs = { };
     for(var i = 0; i < attribCount; i++) {
-        //console.log("read attribute " + i);
         var key = this.readString(this.readInt8());
-        //console.log("key=" + key);
         var value = this.readString(this.readInt8());
-        //console.log("value=" + value);
         attribs[key] = value;
     }
     return attribs;
@@ -313,7 +287,6 @@ BinTreeNodeReader.prototype.getToken = function(token) {
 }
 
 BinTreeNodeReader.prototype.readString = function(token) {
-    //console.log("****** READSTRING TOKEN=" + token);
     if(token == -1) {
         throw("-1 token in readString");
     }
@@ -325,19 +298,14 @@ BinTreeNodeReader.prototype.readString = function(token) {
     }
     if(token == 252) {
         var size8 = this.readInt8();
-        //var buf8 = Buffer(size8, "binary");
         var buf8 = this.inn.slice(this.innPointer, this.innPointer + size8);
-        //this.inn.copy(buf8, this.innPointer, size8);
         this.innPointer += size8;
-        //console.log("buf8=" + buf8.toString("binary"));
         return buf8.toString("ascii");
     }
     if(token == 253) {
         try {
             var size24 = this.readInt24();
-            //var buf24 = new Buffer(size24, "binary");
             var buf24 = this.inn.slice(this.innPointer, this.innPointer + size8);
-            //this.inn.copy(buf24, this.innPointer, size24);
             this.innPointer += size24;
             return buf24.toString("ascii");
         } catch(err) {
@@ -366,80 +334,22 @@ BinTreeNodeReader.prototype.readString = function(token) {
 
 var BinTreeNodeWriter = function(outputstream, dictionary, opt) {
     this.debug = opt ? opt.debug : false;
-    console.log("*** Constructing BinTreeNodeWriter debug=" + this.debug);
     this.realOut = outputstream;
     this.tokenMap = {};
     this.out = new Buffer("");
     for(var i = 0; i < dictionary.length; i++) {
         if(dictionary[i]) {
-            //console.log("add key " + i + " " + dictionary[i]);
             this.tokenMap[dictionary[i]] = i;
         }
     }
-    //console.log(JSON.stringify(this.tokenMap));
 }
 
-/*
- * 01 - stream:stream
- * 00 00
- * x19 = 25 = packet length
- * f8 = 248 = list start
- * 05 = 05 = list length
- * 01 = 01 = stream:start
- * a0 = 160 = to
- * 8a = 138 = s.whatsapp.net
- * 84 = 132 = resource
- * fc = 252 = 8-bit length is next byte
- * 11 = 17 = length 17
- * iPhone-2.6.9-5222
- * 00
- * 08 = 08 = packet length
- * f8 = 248 = list start
- * 02 = 02 = length of list
- * 96 = 150 = stream:features
- * f8 = 248 = list start
- * 01 = 01 = length of list
- * f8 = 248 = list start
- * 01 = 01 = length of list
- * 7e = 126 = receipt_acks
- * 00
- * 07 = 07 = packet length
- * f8 = 248 = list start
- * 05 = 05 = length of list
- * 0f = 15 = auth
- * 5a = 90 = mechanism?
- * 2a = 42 = DIGEST-MD5-1
- * bd = 189 = xmlns
- * a7 = 167 = urn:ietf:params:xml:ns:xmpp-sasl
- */
-
 BinTreeNodeWriter.prototype.streamStart = function(domain, resource) {
-    console.log("*** Starting Write on Stream");
-    /*
-    var outputBuffer = Buffer("WA\x01\x00", "binary");
-    this.realOut.write(outputBuffer);
-    outputBuffer = Buffer("\x00\x19\xf8\x05\x01\xa0\x8a\x84\xfc\x11" + "iPhone-2.6.9-5222", "binary");
-    this.realOut.write(outputBuffer);
-    outputBuffer = Buffer("\x00\x08\xf8\x02\x96\xf8\x01\xf8\x01\x7e\x00", "binary");
-    this.realOut.write(outputBuffer);
-    outputBuffer = Buffer("\x07\xf8\x05\x0f\x5a\x2a\xbd\xa7", "binary");
-    this.realOut.write(outputBuffer);
-    */
     var out = new Buffer("WA\x01\x00", "binary");
     this.realOut.write(out);
-    //console.log("*** Write: " + out.toString("hex"));
     
     var node = new ProtocolTreeNode("stream:stream", { "to": domain, "resource": resource } );
     this.write(node);
-    //this.flushBuffer();*/
-    
-    /*var streamOpenAttributes = { "to": domain, "resource": resource };
-    this.realOut.write(out);
-    console.log("write streamStart: " + out.toString("hex"));
-    this.writeListStart(2 * 2 + 1); // this should be streamOpenAttributes.length, but objects in JS don't do length
-    this.realOut.write("\x01");
-    console.log("write streamStart: 01");
-    this.writeAttributes(streamOpenAttributes);*/
 }
 
 BinTreeNodeWriter.prototype.writeListStart = function(i) {
@@ -453,17 +363,7 @@ BinTreeNodeWriter.prototype.writeListStart = function(i) {
 }
 
 BinTreeNodeWriter.prototype.writeJid = function(user, server) {
-    //console.log("writeJid " + user + " " + server);
     var x = Buffer("\xFA" + (user ? this.writeString(user) : this.writeToken(0)).toString("binary") + this.writeString(server).toString("binary"), "binary");
-    //var sb = this.writeString(server);
-    //console.log("**** Server byte: " + sb[0]);
-    //console.log("writing jid " + x.toString());
-    /*
-    var out = "";
-    for(var i = 0; i < x.length; i++) {
-        out += x[i] + " ";
-    }
-    console.log("jid out: " + out);*/
     return x.toString("binary");
 }
 
@@ -472,9 +372,7 @@ BinTreeNodeWriter.prototype.writeAttributes = function(attributes) {
     if(attributes) {
         for(var x in attributes) {
             var key = this.writeString(x);
-            //console.log("key=" + key.toString("hex"));
             var val = this.writeString(attributes[x]);
-            //console.log("val=" + val.toString("hex"));
             buf = new Buffer(buf.toString("binary") + key.toString("binary") + val.toString("binary"), "binary");
         }
     }
@@ -482,17 +380,12 @@ BinTreeNodeWriter.prototype.writeAttributes = function(attributes) {
 }
 
 BinTreeNodeWriter.prototype.writeString = function(tag) {
-    //console.log("writeString tag=" + tag);
     var key = this.tokenMap[tag];
-    //console.log("writeString tag=" + tag + " key=" + this.tokenMap[tag]);
     if(key) {
-        //console.log("writeString key=" + key);
         return this.writeToken(key);
     } else {
         var atIndex = tag.indexOf('@');
         if(atIndex < 1) {
-            //console.log("writeString: " + tag);
-            //this.realOut.write(tag);
             return this.writeBytes(tag);
         } else {
             var server = tag.substring(atIndex+1, tag.length);
@@ -504,10 +397,8 @@ BinTreeNodeWriter.prototype.writeString = function(tag) {
 
 BinTreeNodeWriter.prototype.writeToken = function(intValue) {
     if(intValue < 245) {
-        //console.log("writeToken: " + intValue);
         return this.writeInt8(intValue);
     } else if(intValue <= 500) {
-        //console.log("writeToken: fe " + intValue - 245);
         return new Buffer("\xFE" + this.writeInt8(intValue - 245).toString("binary"), "binary");
     }
 }
@@ -534,7 +425,7 @@ BinTreeNodeWriter.prototype.write = function(node, needsFlush) {
 }
 
 BinTreeNodeWriter.prototype.writeInternal = function(node) {
-    console.log("*** writeInternal " + node);
+    log.stream("outgoing:\n" + node);
     var attlength = 0;
     if(node.attributes) {
         for(var x in node.attributes) {
@@ -543,18 +434,13 @@ BinTreeNodeWriter.prototype.writeInternal = function(node) {
         }
     }
     var x = 1 + (node.attributes ? attlength * 2 : 0) + (node.children ? 1 : 0) + (node.data ? 1 : 0);
-    //console.log("x=" + x);
     
     var liststart = this.writeListStart(x);
-    //console.log("liststart=" + liststart.toString("hex"));
     
     var tagstring = this.writeString(node.tag);
-    //console.log("tagstring=" + tagstring.toString("hex"));
     
     var attrib = this.writeAttributes(node.attributes);
-    //console.log("attrib=" + attrib.toString("hex"));
-    
-    
+     
     this.out = new Buffer(this.out.toString("binary") + liststart.toString("binary") + tagstring.toString("binary") + attrib.toString("binary"), "binary");
     if(node.data) {
         this.out = new Buffer(this.out.toString("binary") + this.writeBytes(node.data).toString("binary"), "binary");
@@ -565,28 +451,19 @@ BinTreeNodeWriter.prototype.writeInternal = function(node) {
             this.writeInternal(node.children[c]);
         }
     }
-    //console.log("writeInternal new buffer=" + this.out.toString("hex"));
 }
 
 BinTreeNodeWriter.prototype.flushBuffer = function() {
-    //console.log("***** flushBuffer");
     var size = this.out.length;
-    //if(size & 0xFFFF0000 != 0) {
-        //throw("Output buffer too large: " + size);
-    //}
     var x = this.writeInt16(size);
     var buf = new Buffer(x.toString("binary") + this.out.toString("binary"), "binary");
     if(this.debug) {
         var out = "";
-        //console.log("flushing buffer of size " + size + " " + x.toString("hex"));
-        //console.log("flush buffer: " + buf.toString("hex"));
         for(var i = 0; i < buf.length; i++) {
             out += buf[i] + " ";
         }
-        console.log("flushing buffer of size " + size + ": " + out);
     }
     this.realOut.write(buf, "binary");
-    //this.realOut.write(this.out);
     this.out = new Buffer("");
 }
 
@@ -595,7 +472,6 @@ BinTreeNodeWriter.prototype.writeInt8 = function(v) {
 }
 
 BinTreeNodeWriter.prototype.writeInt16 = function(v) {
-    //console.log("writeInt16, v=" + v + " " + String.fromCharCode(v) + " " + ( (v >> 8) & 0xFF) + " " + (v & 0xFF));
     return new Buffer(this.writeInt8( (v >> 8) & 0xFF).toString("binary") + this.writeInt8(v & 0xFF).toString("binary"), "binary");
 }
 
@@ -606,3 +482,4 @@ BinTreeNodeWriter.prototype.writeInt24 = function(v) {
 exports.ProtocolTreeNode = ProtocolTreeNode;
 exports.BinTreeNodeReader = BinTreeNodeReader;
 exports.BinTreeNodeWriter = BinTreeNodeWriter;
+exports.log = log;

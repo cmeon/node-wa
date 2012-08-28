@@ -163,7 +163,7 @@ var waApi = function(username, password, opt) {
         password: password,
         resource: "iPhone-2.8.2-5222", // Symbian-2.6.61-443
         domain: "s.whatsapp.net",
-        displayName: opt.displayName
+        displayName: opt.displayName || "Whazaa!"
     };
     this.socket = net.createConnection(5222, 'bin-short.whatsapp.net');
     this.writer = new BinTreeNodeWriter(this.socket, dictionary, { debug: this.debug });
@@ -183,10 +183,10 @@ var waApi = function(username, password, opt) {
         this.writer.write(node);
     }.bind(this));
     
-    this.socket.addListener('close', function socketClosed() {
-        console.log("***************** SOCKET CLOSED *******************");
-        if(!this.noReconnect)
-            this.socket.connect(5222, 'bin-short.whatsapp.net');
+    this.socket.addListener('close', function socketClosed(x) {
+        console.log("***************** SOCKET CLOSED ******************* " + JSON.stringify(x));
+        //if(!this.noReconnect)
+        //    this.socket.connect(5222, 'bin-short.whatsapp.net');
         this.emit('close');
     }.bind(this));
     
@@ -198,6 +198,7 @@ var waApi = function(username, password, opt) {
     this.reader.addListener('stanza', function handleStanza(node) {
         if(node.tag == "failure" && node.getAttributeValue("xmlns") == "urn:ietf:params:xml:ns:xmpp-sasl" && node.getChild("not-authorized"))
         {
+            console.log("**** ACCESS NOT AUTHORIZED");
             this.emit('notAuthorized');
             this.noReconnect = true;
             this.socket.end();
@@ -590,6 +591,8 @@ waApi.prototype.getMessageNode = function(fmsg, child) {
     return messageNode;
 }
 
+//var wa = new waApi("17079925233", "134529771563");
+//var wa = new waApi("19519993267", "134529771563");
 exports.waApi = waApi;
 
 /*

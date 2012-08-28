@@ -127,10 +127,6 @@ BinTreeNodeReader.prototype.streamStart = function() {
     this.rawIn.addListener('data', function dataReceived(data) {
         this.inn = data;
         if(!this.streamStarted) {
-            var out = "";
-            for(var x = 0; x < this.inn.length; x++) {
-                out += this.inn[x] + " ";
-            }
             var stanzaSize = this.readInt16();
             var tag = this.readInt8();
             var size = this.readListSize(tag);
@@ -163,6 +159,7 @@ BinTreeNodeReader.prototype.nextTreeInternal = function() {
     
     b = this.readInt8();
     if(b == 2) {
+        console.log("** Stream closed, received tag 2");
         log.log("** Stream closed, received tag 2");
         log.stream("** Stream closed, received tag 2");
         return undefined;
@@ -305,11 +302,11 @@ BinTreeNodeReader.prototype.readString = function(token) {
     if(token == 253) {
         try {
             var size24 = this.readInt24();
-            var buf24 = this.inn.slice(this.innPointer, this.innPointer + size8);
+            var buf24 = this.inn.slice(this.innPointer, this.innPointer + size24);
             this.innPointer += size24;
             return buf24.toString("ascii");
         } catch(err) {
-            return "Bad Buf24 read";
+            return "Bad Buf24 read, size24=" + size24 + " inn.length=" + this.inn.length + " innPointer=" + this.innPointer;
         }
     }
     if(token == 254) {

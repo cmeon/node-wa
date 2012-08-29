@@ -4,6 +4,7 @@ node-wa
 Node.js whatsapp access
 
 Loosely based on the WhatsAPI and Wazapp projects that you can find on github.
+Thanks to vkotovv for the fix for login issues Aug 29!
 
 Appears to work in all versions of Node from 0.2 to 0.8.  
 

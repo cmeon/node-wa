@@ -12,7 +12,11 @@ var log = {
         var d = new Date();
         var dt = (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes();
         fs.open('/tmp/stream.log', 'a', function(err, file) {
-            fs.write(file, dt + ":" + str);
+            if(!err) {
+                fs.write(file, dt + ":" + str);
+            } else {
+                console.log(err);
+            }
         });
     }
 };
@@ -197,6 +201,12 @@ BinTreeNodeReader.prototype.nextTreeInternal = function() {
         case "category": // category is a sub of presence, perhaps others? who knows
         case "ping": // ping is a sub of iq
             break;
+        case "query": // query xmlns=jabber:iq:last is handled as part of an iq
+            if(node.getAttributeValue("xmlns") != "jabber:iq:last") {
+                this.emit('stanza', node);
+            } else {
+                break;
+            }
         case "iq":
             this.emit('iq', node);
             break;
@@ -342,7 +352,8 @@ var BinTreeNodeWriter = function(outputstream, dictionary, opt) {
 }
 
 BinTreeNodeWriter.prototype.streamStart = function(domain, resource) {
-    var out = new Buffer("WA\x01\x00", "binary");
+    //var out = new Buffer("WA\x01\x00", "binary");
+    var out = new Buffer("WA\x00\x04", "binary");
     this.realOut.write(out);
     
     var node = new ProtocolTreeNode("stream:stream", { "to": domain, "resource": resource } );
@@ -459,6 +470,8 @@ BinTreeNodeWriter.prototype.flushBuffer = function() {
         for(var i = 0; i < buf.length; i++) {
             out += buf[i] + " ";
         }
+        console.log("writing buffer of size " + size);
+        console.log(buf.toString("ascii"));
     }
     this.realOut.write(buf, "binary");
     this.out = new Buffer("");

@@ -1,42 +1,3 @@
-const dictionary =
-	[
-        undefined, "stream:stream", "/stream:stream", undefined, undefined,
-        "1", "1.0", "ack", "action", "active", "add", "all", "allow", "apple", "audio", "auth", "author", "available",
-        "bad-request", "base64", "Bell.caf", "bind", "body", "Boing.caf",
-        "cancel", "category", "challenge", "chat", "clean", "code", "composing", "config", "conflict", "contacts", "create", "creation",
-        "default", "delay", "delete", "delivered", "deny", "DIGEST-MD5", "DIGEST-MD5-1", "dirty",
-        "en", "enable", "encoding", "error", "expiration", "expired",
-        "failure", "false", "favorites", "feature", "field", "free", "from",
-        "g.us", "get", "Glass.caf", "google", "group", "groups", "g_sound",
-        "Harp.caf", "http://etherx.jabber.org/streams", "http://jabber.org/protocol/chatstates",
-        "id", "image", "img", "inactive", "internal-server-error", "iq", "item", "item-not-found",
-        "jabber:client", "jabber:iq:last", "jabber:iq:privacy", "jabber:x:delay", "jabber:x:event", "jid", "jid-malformed",
-        "kind",
-        "leave", "leave-all", "list", "location",
-        "max_groups", "max_participants", "max_subject", "mechanism", "mechanisms", "media", "message", "message_acks", "missing", "modify",
-        "name", "not-acceptable", "not-allowed", "not-authorized", "notify",
-        "Offline Storage", "order", "owner", "owning",
-        "paid", "participant", "participants", "participating", "particpants", "paused", "picture", "ping", "PLAIN", "platform", "presence",
-        "preview", "probe", "prop", "props", "p_o", "p_t",
-        "query",
-        "raw", "receipt", "receipt_acks", "received", "relay", "remove", "Replaced by new connection", "request", "resource", "resource-constraint",
-        "response", "result", "retry", "rim",
-        "s.whatsapp.net", "seconds", "server", "session", "set", "show", "sid", "sound", "stamp", "starttls", "status", "stream:error",
-        "stream:features", "subject", "subscribe", "success", "system-shutdown", "s_o", "s_t",
-        "t", "TimePassing.caf", "timestamp", "to", "Tri-tone.caf", "type",
-        "unavailable", "uri", "url", "urn:ietf:params:xml:ns:xmpp-bind", "urn:ietf:params:xml:ns:xmpp-sasl", "urn:ietf:params:xml:ns:xmpp-session",
-        "urn:ietf:params:xml:ns:xmpp-stanzas", "urn:ietf:params:xml:ns:xmpp-streams", "urn:xmpp:delay", "urn:xmpp:ping", "urn:xmpp:receipts",
-        "urn:xmpp:whatsapp", "urn:xmpp:whatsapp:dirty", "urn:xmpp:whatsapp:mms", "urn:xmpp:whatsapp:push",
-        "value", "vcard", "version", "video",
-        "w", "w:g", "w:p:r", "wait",
-        "x", "xml-not-well-formed", "xml:lang", "xmlns", "xmlns:stream", "Xylophone.caf",
-        "account","digest","g_notify","method","password","registration","stat","text","user","username","event","latitude","longitude",
-        "true", "after", "before", "broadcast", "count", "features", "first", "index", "invalid-mechanism", undefined, // 205-214
-        "max", "offline", "proceed", "required", "sync", "elapsed", "ip", "microsoft", "mute", "nokia", "off", "pin", // 215-226
-        "pop_mean_time", "pop_plus_minus", "port", "reason", "server-error", "silent", "timeout", "lc", "lg", "bad-protocol", // 227-236
-        "none", "remote-server-timeout", "service-unavailable", /*"w:p"*/undefined, "w:profile:picture", "notification", // 237-242        
-    ];
-
 var net = require('net');
 var base64 = require('./base64');
 var crypto = require('crypto');
@@ -192,6 +153,7 @@ var waApi = function(username, password, opt) {
     
     this.socket.addListener('error', function socketError(err) {
         console.log("***************** SOCKET ERROR ********************" + JSON.stringify(err));
+        // {"message":"ECONNREFUSED, Could not contact DNS servers","stack":"Error: ECONNREFUSED, Could not contact DNS servers\n    at IOWatcher.callback (dns.js:74:15)","errno":11,"code":"ECONNREFUSED"}
         this.noReconnect = true;
     }.bind(this));
     
@@ -963,3 +925,282 @@ function pack(format) {
 
     return result;
 }
+
+
+/*const dictionary = [
+    undefined, undefined, undefined, undefined, undefined, // 00-04
+                        //"account", // 5
+                        "1", "1.0",
+                        "ack", // 6
+                        "action", // 7
+                        "active", // 8
+                        "add", // 9
+                        "after", // 10
+                        "ib", // 11
+                        "all", // 12
+                        "allow", // 13
+                        "apple", // 14
+                        "audio", // 15
+                        "auth", // 16
+                        "author", // 17
+                        "available", // 18
+                        "bad-protocol", // 19
+                        "bad-request", // 20
+                        "before",
+                        "Bell.caf",
+                        "body",
+                        "Boing.caf",
+                        "cancel", // 25
+                        "category",
+                        "challenge",
+                        "chat",
+                        "clean",
+                        "code", // 30
+                        "composing",
+                        "config",
+                        "conflict",
+                        "contacts",
+                        "count", // 35
+                        "create",
+                        "creation",
+                        "default",
+                        "delay",
+                        "delete", // 40
+                        "delivered",
+                        "deny",
+                        "digest",
+                        "DIGEST-MD5-1",
+                        "DIGEST-MD5-2", // 45
+                        "dirty",
+                        "elapsed",
+                        "broadcast",
+                        "enable",
+                        "encoding", // 50
+                        "duplicate",
+                        "error",
+                        "event",
+                        "expiration",
+                        "expired", // 55
+                        "fail",
+                        "failure",
+                        "false",
+                        "favorites",
+                        "feature", // 60
+                        "features",
+                        "field",
+                        "first",
+                        "free",
+                        "from", // 65
+                        "g.us",
+                        "get",
+                        "Glass.caf",
+                        "google",
+                        "group", // 70
+                        "groups",
+                        "g_notify",
+                        "g_sound",
+                        "Harp.caf",
+                        "http://etherx.jabber.org/streams", // 75
+                        "http://jabber.org/protocol/chatstates",
+                        "id",
+                        "image",
+                        "img",
+                        "inactive", // 80
+                        "index",
+                        "internal-server-error",
+                        "invalid-mechanism",
+                        "ip",
+                        "iq", // 85
+                        "item",
+                        "item-not-found",
+                        "user-not-found",
+                        "jabber:iq:last",
+                        "jabber:iq:privacy", // 90
+                        "jabber:x:delay",
+                        "jabber:x:event",
+                        "jid",
+                        "jid-malformed",
+                        "kind", // 95
+                        "last",
+                        "latitude",
+                        "lc",
+                        "leave",
+                        "leave-all", // 100
+                        "lg",
+                        "list",
+                        "location",
+                        "longitude",
+                        "max", // 105
+                        "max_groups",
+                        "max_participants",
+                        "max_subject",
+                        "mechanism",
+                        "media", // 110
+                        "message",
+                        "message_acks",
+                        "method",
+                        "microsoft",
+                        "missing", // 115
+                        "modify",
+                        "mute",
+                        "name",
+                        "nokia",
+                        "none", // 120
+                        "not-acceptable",
+                        "not-allowed",
+                        "not-authorized",
+                        "notification",
+                        "notify", // 125
+                        "off",
+                        "offline",
+                        "order",
+                        "owner",
+                        "owning", // 130
+                        "paid",
+                        "participant",
+                        "participants",
+                        "participating",
+                        "password", // 135
+                        "paused",
+                        "picture",
+                        "pin",
+                        "ping",
+                        "platform", // 140
+                        "pop_mean_time",
+                        "pop_plus_minus",
+                        "port",
+                        "presence",
+                        "preview", // 145
+                        "probe",
+                        "proceed",
+                        "prop",
+                        "props",
+                        "p_o", // 150
+                        "p_t",
+                        "query",
+                        "raw",
+                        "reason",
+                        "receipt", // 155
+                        "receipt_acks",
+                        "received",
+                        "registration",
+                        "relay",
+                        "remote-server-timeout", // 160
+                        "remove",
+                        "Replaced by new connection",
+                        "request",
+                        "required",
+                        "resource", // 165
+                        "resource-constraint",
+                        "response",
+                        "result",
+                        "retry",
+                        "rim", // 170
+                        "s.whatsapp.net",
+                        "s.us",
+                        "seconds",
+                        "server",
+                        "server-error", // 175
+                        "service-unavailable",
+                        "set",
+                        "show",
+                        "sid",
+                        "silent", // 180
+                        "sound",
+                        "stamp",
+                        "unsubscribe",
+                        "stat",
+                        "status", // 185
+                        "stream:error",
+                        "stream:features",
+                        "subject",
+                        "subscribe",
+                        "success", // 190
+                        "sync",
+                        "system-shutdown",
+                        "s_o",
+                        "s_t",
+                        "t", // 195
+                        "text",
+                        "timeout",
+                        "TimePassing.caf",
+                        "timestamp",
+                        "to", // 200
+                        "Tri-tone.caf",
+                        "true",
+                        "type",
+                        "unavailable",
+                        "uri", // 205
+                        "url",
+                        "urn:ietf:params:xml:ns:xmpp-sasl",
+                        "urn:ietf:params:xml:ns:xmpp-stanzas",
+                        "urn:ietf:params:xml:ns:xmpp-streams",
+                        "urn:xmpp:delay", // 210
+                        "urn:xmpp:ping",
+                        "urn:xmpp:receipts",
+                        "urn:xmpp:whatsapp",
+                        "urn:xmpp:whatsapp:account",
+                        "urn:xmpp:whatsapp:dirty", // 215
+                        "urn:xmpp:whatsapp:mms",
+                        "urn:xmpp:whatsapp:push",
+                        "user",
+                        "username",
+                        "value", // 220
+                        "vcard",
+                        "version",
+                        "video",
+                        "w",
+                        "w:g", // 225
+                        "w:p",
+                        "w:p:r",
+                        "w:profile:picture",
+                        "wait",
+                        "x", // 230
+                        "xml-not-well-formed",
+                        "xmlns",
+                        "xmlns:stream",
+                        "Xylophone.caf",
+                        "1", // 235
+                        "WAUTH-1"    
+];*/
+
+
+const dictionary =
+	[
+        undefined, "stream:stream", "/stream:stream", undefined, undefined,
+        "1", "1.0", "ack", "action", "active", "add", "all", "allow", "apple", "audio", "auth", "author", "available",
+        "bad-request", "base64", "Bell.caf", "bind", "body", "Boing.caf",
+        "cancel", "category", "challenge", "chat", "clean", "code", "composing", "config", "conflict", "contacts", "create", "creation",
+        "default", "delay", "delete", "delivered", "deny", "DIGEST-MD5", "DIGEST-MD5-1", "dirty",
+        "en", "enable", "encoding", "error", "expiration", "expired",
+        "failure", "false", "favorites", "feature", "field", "free", "from",
+        "g.us", "get", "Glass.caf", "google", "group", "groups", "g_sound",
+        "Harp.caf", "http://etherx.jabber.org/streams", "http://jabber.org/protocol/chatstates",
+        "id", "image", "img", "inactive", "internal-server-error", "iq", "item", "item-not-found",
+        "jabber:client", "jabber:iq:last", "jabber:iq:privacy", "jabber:x:delay", "jabber:x:event", "jid", "jid-malformed",
+        "kind",
+        "leave", "leave-all", "list", "location",
+        "max_groups", "max_participants", "max_subject", "mechanism", "mechanisms", "media", "message", "message_acks", "missing", "modify",
+        "name", "not-acceptable", "not-allowed", "not-authorized", "notify",
+        "Offline Storage", "order", "owner", "owning",
+        "paid", "participant", "participants", "participating", "particpants", "paused", "picture", "ping", "PLAIN", "platform", "presence",
+        "preview", "probe", "prop", "props", "p_o", "p_t",
+        "query",
+        "raw", "receipt", "receipt_acks", "received", "relay", "remove", "Replaced by new connection", "request", "resource", "resource-constraint",
+        "response", "result", "retry", "rim",
+        "s.whatsapp.net", "seconds", "server", "session", "set", "show", "sid", "sound", "stamp", "starttls", "status", "stream:error",
+        "stream:features", "subject", "subscribe", "success", "system-shutdown", "s_o", "s_t",
+        "t", "TimePassing.caf", "timestamp", "to", "Tri-tone.caf", "type",
+        "unavailable", "uri", "url", "urn:ietf:params:xml:ns:xmpp-bind", "urn:ietf:params:xml:ns:xmpp-sasl", "urn:ietf:params:xml:ns:xmpp-session",
+        "urn:ietf:params:xml:ns:xmpp-stanzas", "urn:ietf:params:xml:ns:xmpp-streams", "urn:xmpp:delay", "urn:xmpp:ping", "urn:xmpp:receipts",
+        "urn:xmpp:whatsapp", "urn:xmpp:whatsapp:dirty", "urn:xmpp:whatsapp:mms", "urn:xmpp:whatsapp:push",
+        "value", "vcard", "version", "video",
+        "w", "w:g", "w:p:r", "wait",
+        "x", "xml-not-well-formed", "xml:lang", "xmlns", "xmlns:stream", "Xylophone.caf",
+        "account","digest","g_notify","method","password","registration","stat","text","user","username","event","latitude","longitude",
+        "true", "after", "before", "broadcast", "count", "features", "first", "index", "invalid-mechanism", undefined, // 205-214
+        "max", "offline", "proceed", "required", "sync", "elapsed", "ip", "microsoft", "mute", "nokia", "off", "pin", // 215-226
+        "pop_mean_time", "pop_plus_minus", "port", "reason", "server-error", "silent", "timeout", "lc", "lg", "bad-protocol", // 227-236
+        "none", "remote-server-timeout", "service-unavailable", //"w:p"
+        undefined, "w:profile:picture", "notification", // 237-242        
+    ];

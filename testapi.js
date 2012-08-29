@@ -219,9 +219,6 @@ var waApi = function(username, password, opt) {
         this.writer.write(node);
         
         this.sendClientConfig('', '', false, '');
-        this.sendAvailable();
-        this.sendAvailableForChat();
-        //this.sendCustomStatus("GO OPEN WEBOS!");
         
     }.bind(this));
     
@@ -229,6 +226,9 @@ var waApi = function(username, password, opt) {
         console.log("*** Successfully logged in.  Account status: " + data.getAttributeValue("status"));
         console.log("*** Creation Timestamp: " + data.getAttributeValue("creation"));
         console.log("*** Expiration Timestamp: " + data.getAttributeValue("expiration"));
+        this.sendAvailable();
+        this.sendAvailableForChat();
+        this.sendCustomStatus("GO OPEN WEBOS!");
         this.emit('loggedin');
     }.bind(this));
     
@@ -499,10 +499,11 @@ waApi.prototype.sendAvailable = function() {
 
 // TODO: This does not appear to work. Perhaps WA is not using the standard method?
 waApi.prototype.sendCustomStatus = function(status) {
-    var showNode = new ProtocolTreeNode("show", undefined, undefined, "chat");
+    /*var showNode = new ProtocolTreeNode("show", undefined, undefined, "chat");
     var statusNode = new ProtocolTreeNode("status", undefined, undefined, status);
     var presenceNode = new ProtocolTreeNode("presence", { "from": this.loginInfo.username+"@s.whatsapp.net", "xml:lang": "en" }, [ showNode, statusNode] );
-    this.writer.write(presenceNode);
+    this.writer.write(presenceNode);*/
+    this.sendMessageWithBody({ to: this.loginInfo.username + "@s.us", content: status });    
 }
 
 // TODO: use sendUnavailable

@@ -245,11 +245,20 @@ BinTreeNodeReader.prototype.readInt8 = function() {
 }
 
 BinTreeNodeReader.prototype.readInt16 = function() {
-    return this.readInt8() + this.readInt8();
+    //return this.readInt8() + this.readInt8();
+    var a = this.readInt8();
+    var b = this.readInt8();
+    return (a << 8) + b;
 }
 
 BinTreeNodeReader.prototype.readInt24 = function() {
-    return this.readInt8() + this.readInt8() + this.readInt8();
+    var a = this.readInt8();
+    var b = this.readInt8();
+    var c = this.readInt8();
+    //console.log("readInt24: " + a + "," + b + "," + c + "=" + (a+b+c));
+    //console.log("shift: " + ((a << 16) + (b << 8) + c));
+    //return this.readInt8() + this.readInt8() + this.readInt8();
+    return (a << 16) + (b << 8) + c;
 }
 
 BinTreeNodeReader.prototype.readListSize = function(token) {
@@ -313,6 +322,7 @@ BinTreeNodeReader.prototype.readString = function(token) {
         try {
             var size24 = this.readInt24();
             var buf24 = this.inn.slice(this.innPointer, this.innPointer + size24);
+            console.log("24bit read, size24=" + size24 + " inn.length=" + this.inn.length + " innPointer=" + this.innPointer);
             this.innPointer += size24;
             return buf24.toString("ascii");
         } catch(err) {

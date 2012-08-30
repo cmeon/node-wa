@@ -116,54 +116,63 @@ var BinTreeNodeWriter = nodes.BinTreeNodeWriter;
 var BinTreeNodeReader = nodes.BinTreeNodeReader;
 
 var waApi = function(username, password, opt) {
-    this.debug = opt ? opt.debug : false;
-    this.iqId = 0;
+    var self = this;
+    
+    self.debug = opt ? opt.debug : false;
+    self.iqId = 0;
     console.log("*** constructing waApi for " + username + ": " + password);
-    this.loginInfo = {
+    self.loginInfo = {
         username: username,
         password: password,
         resource: "iPhone-2.8.2-5222", // Symbian-2.6.61-443
         domain: "s.whatsapp.net",
         displayName: opt.displayName || "Whazaa!"
     };
-    this.socket = net.createConnection(5222, 'bin-short.whatsapp.net');
-    this.writer = new BinTreeNodeWriter(this.socket, dictionary, { debug: this.debug });
-    this.reader = new BinTreeNodeReader(this.socket, dictionary, { debug: this.debug });
+    self.socket = net.createConnection(5222, 'bin-short.whatsapp.net');
+    self.writer = new BinTreeNodeWriter(self.socket, dictionary, { debug: self.debug });
+    self.reader = new BinTreeNodeReader(self.socket, dictionary, { debug: self.debug });
     
-    this.socket.addListener('connect', function socketConnected() {
+    self.socket.addListener('connect', function socketConnected() {
         console.log("*** socket connected");
-        this.reader.streamStart();
-        this.writer.streamStart(this.loginInfo.domain, this.loginInfo.resource);
+        self.reader.streamStart();
+        self.writer.streamStart(self.loginInfo.domain, self.loginInfo.resource);
         
-        var toWrite = new ProtocolTreeNode("stream:features", undefined, [new ProtocolTreeNode("receipt_acks")]);
+        var features = [
+            new ProtocolTreeNode("receipt_acks"),
+            // TODO: enabling this throws a stream:error at the moment.. bad dictionary?
+            //new ProtocolTreeNode("w:profile:picture", { type: "all" }),
+            new ProtocolTreeNode("status"),
+        ];
+        var toWrite = new ProtocolTreeNode("stream:features", { }, features);
+        
         console.log("writing features:" + toWrite);
-        this.writer.write(toWrite);
+        self.writer.write(toWrite);
         
         var node = new ProtocolTreeNode("auth", { "mechanism":"DIGEST-MD5-1","xmlns":"urn:ietf:params:xml:ns:xmpp-sasl" });
         console.log("sending auth:" + node);
-        this.writer.write(node);
-    }.bind(this));
+        self.writer.write(node);
+    }.bind(self));
     
-    this.socket.addListener('close', function socketClosed(x) {
+    self.socket.addListener('close', function socketClosed(x) {
         console.log("***************** SOCKET CLOSED ******************* " + JSON.stringify(x));
         //if(!this.noReconnect)
         //    this.socket.connect(5222, 'bin-short.whatsapp.net');
-        this.emit('close');
-    }.bind(this));
+        self.emit('close');
+    }.bind(self));
     
-    this.socket.addListener('error', function socketError(err) {
+    self.socket.addListener('error', function socketError(err) {
         console.log("***************** SOCKET ERROR ********************" + JSON.stringify(err));
         // {"message":"ECONNREFUSED, Could not contact DNS servers","stack":"Error: ECONNREFUSED, Could not contact DNS servers\n    at IOWatcher.callback (dns.js:74:15)","errno":11,"code":"ECONNREFUSED"}
-        this.noReconnect = true;
-    }.bind(this));
+        self.noReconnect = true;
+    }.bind(self));
     
-    this.reader.addListener('stanza', function handleStanza(node) {
+    self.reader.addListener('stanza', function handleStanza(node) {
         if(node.tag == "failure" && node.getAttributeValue("xmlns") == "urn:ietf:params:xml:ns:xmpp-sasl" && node.getChild("not-authorized"))
         {
             console.log("**** ACCESS NOT AUTHORIZED");
-            this.emit('notAuthorized');
-            this.noReconnect = true;
-            this.socket.end();
+            self.emit('notAuthorized');
+            self.noReconnect = true;
+            self.socket.end();
         }
         if(node.tag == "error" && node.getAttributeValue("code") == "404" && node.getAttributeValue("type") == "cancel")
         {
@@ -175,9 +184,9 @@ var waApi = function(username, password, opt) {
             return;
         }
         console.log("received stanza: " + node);
-    }.bind(this));
+    }.bind(self));
     
-    this.reader.addListener('challenge', function handleChallenge(node) {
+    self.reader.addListener('challenge', function handleChallenge(node) {
         console.log("**** Decoding Challenge");
         var challenge = base64.base64.decode(node.data.toString("binary"));
         console.log("*** Challenge = " + challenge);
@@ -191,19 +200,19 @@ var waApi = function(username, password, opt) {
         console.log("cnonce=" + cnonce);
         var nc = "00000001";
         console.log("nc=" + nc);
-        var digest_uri = "xmpp/" + this.loginInfo.domain;
+        var digest_uri = "xmpp/" + self.loginInfo.domain;
         console.log("digest_uri=" + digest_uri);
         var qop="auth";
-        var realm = this.loginInfo.domain;
+        var realm = self.loginInfo.domain;
 
-        var a1 = this.loginInfo.username + ":" + this.loginInfo.domain + ":" + this.loginInfo.password;
+        var a1 = self.loginInfo.username + ":" + self.loginInfo.domain + ":" + self.loginInfo.password;
         a1 = pack('H32', md5(a1)) + ":" + nonce + ":" + cnonce;
-        var a2 = "AUTHENTICATE:" + "xmpp/" + this.loginInfo.domain;
+        var a2 = "AUTHENTICATE:" + "xmpp/" + self.loginInfo.domain;
         var password = md5(a1) + ":" + nonce + ":" + nc + ":" + cnonce + ":" + qop + ":" + md5(a2);
         console.log("password prior to encoding:" + password);
         password = md5(password);
         console.log("password post encoding: " + password);
-        var bigger_response = 'username="' + this.loginInfo.username + '",'
+        var bigger_response = 'username="' + self.loginInfo.username + '",'
                     + 'realm="' + realm + '",'
                     + 'nonce="' + nonce + '",'
                     + 'cnonce="' + cnonce + '",'
@@ -216,23 +225,22 @@ var waApi = function(username, password, opt) {
         
         var node = new ProtocolTreeNode("response", { "xmlns": "urn:ietf:params:xml:ns:xmpp-sasl" }, undefined, base64.base64.encode(bigger_response));
         console.log("Responding with node: " + node);
-        this.writer.write(node);
+        self.writer.write(node);
         
-        this.sendClientConfig('', '', false, '');
+        self.sendClientConfig('', '', false, '');
         
-    }.bind(this));
+    }.bind(self));
     
-    this.reader.addListener('loggedin', function loggedIn(data) {
+    self.reader.addListener('loggedin', function loggedIn(data) {
         console.log("*** Successfully logged in.  Account status: " + data.getAttributeValue("status"));
         console.log("*** Creation Timestamp: " + data.getAttributeValue("creation"));
         console.log("*** Expiration Timestamp: " + data.getAttributeValue("expiration"));
-        this.sendAvailable();
-        this.sendAvailableForChat();
-        this.sendCustomStatus("GO OPEN WEBOS!");
-        this.emit('loggedin');
-    }.bind(this));
+        self.sendAvailable();
+        self.sendAvailableForChat();
+        self.emit('loggedin');
+    }.bind(self));
     
-    this.reader.addListener('iq', function receivedIq(data) {
+    self.reader.addListener('iq', function receivedIq(data) {
         //console.log("received iq: " + data);
         var iqType = data.getAttributeValue("type");
         var idx = data.getAttributeValue("id");
@@ -245,7 +253,7 @@ var waApi = function(username, password, opt) {
             case "get":
                 var childNode = data.getChild(0);
                 if(childNode.tag === "ping") {
-                    this.handlePing(idx);
+                    self.handlePing(idx);
                 }
                 break;
             case "error":
@@ -256,12 +264,12 @@ var waApi = function(username, password, opt) {
     </item-not-found>
     </error>
 </iq>
-*/              this.emit('iqerror', data);
+*/              self.emit('iqerror', data);
                 break;
             case "result":
                 var queryNode = data.getChild("query");
                 if(queryNode && queryNode.getAttributeValue("xmlns") === "jabber:iq:last") {
-                    this.emit('iqquerylast', { from: jid, seconds: queryNode.getAttributeValue("seconds") });
+                    self.emit('iqquerylast', { from: jid, seconds: queryNode.getAttributeValue("seconds") });
                     break;
                 }
                 // intentional fall thru for now
@@ -273,38 +281,39 @@ var waApi = function(username, password, opt) {
                 console.log("received iq type: " +iqType + ": " + data);
                 break;
         }
-    }.bind(this));
+    }.bind(self));
     
-    this.reader.addListener('presence', function receivedPresence(data) {
+    self.reader.addListener('presence', function receivedPresence(data) {
         console.log("received presence: " + data);
-        this.emit('presence', { from: data.getAttributeValue("from"), type: data.getAttributeValue("type") });
-    }.bind(this));
+        self.emit('presence', { from: data.getAttributeValue("from"), type: data.getAttributeValue("type") });
+    }.bind(self));
     
-    this.reader.addListener('streamError', function streamError(data) {
+    self.reader.addListener('streamError', function streamError(data) {
         var childNode1 = data.getChild("text");
         if(!childNode1) {
             console.log("**** Stream Error data: " + data);
         } else {
             console.log("**** Stream Error: " + childNode1.data);
+            if(childNode1.data == "Replaced by new connection") {
+                self.noReconnect = true; // make SURE it's true
+                self.emit('connectionReplaced');
+            }
         }
         console.log("******************************** STREAM ERROR NOT AUTO RECONNECTING ******************************");
-        this.noReconnect = true;
-    }.bind(this));
+        self.noReconnect = true;
+    }.bind(self));
     
-    this.reader.addListener('message', function handleMessage(messageNode) {
+    self.reader.addListener('message', function handleMessage(messageNode) {
         console.log("**** Holy shit! A MESSAGE!");
-        var media = messageNode.getChild("media");
         var emitMessage = true;
-        if(media) {
-            console.log("*** Hmm. It has some media attached.  What should I do?!?!?");
-            console.log(media)
-        }
         var msgId = messageNode.getAttributeValue("id");
         var attributeT = messageNode.getAttributeValue("t");
         var fromAttribute = messageNode.getAttributeValue("from");
         var author = messageNode.getAttributeValue("author");
         var typeAttribute = messageNode.getAttributeValue("type");
         var visibleName = "";
+        
+        console.log("*** Message is of type: " + typeAttribute);
         
         if(typeAttribute === "error") {
             console.log("*** My God, it's full of Errors.");
@@ -322,28 +331,50 @@ var waApi = function(username, password, opt) {
             var newSubject = bodyNode ? bodyNode.data : undefined;
             console.log("*** Subject received: " + newSubject);
             if(receiptRequested) {
-                this.sendSubjectReceived(fromAttribute, msgId);
+                self.sendSubjectReceived(fromAttribute, msgId);
             }
+        } else if(typeAttribute == "notification") {
+            // TODO: I don't see a "notification" type in here anywhere, what's it do?
         } else if(typeAttribute == "chat") {
             var duplicate = false;
             var wantsReceipt = false;
             var messageChildren = messageNode.children || [];
             for(var childNode in messageChildren) {
                 switch(messageChildren[childNode].tag) {
+                    case "media":
+                        var media = messageNode.getChild("media");
+                        if(media) {
+                            console.log("*** Hmm. It has some media attached.  What should I do?!?!?");
+                            console.log(media);
+                            var mediatype = media.getAttributeValue("type");
+                            var mediaurl = media.getAttributeValue("url");
+                            var mediafile = media.getAttributeValue("file");
+                            var mediasize = media.getAttributeValue("size");
+                            var medialength = media.getAttributeValue("seconds");
+                            var medialatitude = media.getAttributeValue("latitude");
+                            var medialongitude = media.getAttributeValue("longitude");
+                            var medianame = media.getAttributeValue("name");
+                            
+                            self.emit('media', { msgId: msgId, from: fromAttribute, type: mediatype,
+                                      url: mediaurl, file: mediafile, size: mediasize, length: medialength,
+                                      latitude: medialatitude, longitude: medialongitude, name: medianame });
+                            emitMessage = false;
+                        }
+                        break;
                     case "received":
                         console.log("*** " + fromAttribute + " received message " + msgId);
-                        this.emit('msgReceived', { from: fromAttribute, id: msgId });
-                        this.sendDeliveredReceiptAck(fromAttribute, msgId);
+                        self.emit('msgReceived', { from: fromAttribute, id: msgId });
+                        self.sendDeliveredReceiptAck(fromAttribute, msgId);
                         emitMessage = false;
                         break;
                     case "composing":
                         console.log("*** " + fromAttribute + " is typing");
-                        this.emit('composing', fromAttribute);
+                        self.emit('composing', fromAttribute);
                         emitMessage = false;
                         break;
                     case "paused":
                         console.log("*** " + fromAttribute + " stopped typing");
-                        this.emit('paused', fromAttribute);
+                        self.emit('paused', fromAttribute);
                         emitMessage = false;
                         break;
                     case "body":
@@ -353,21 +384,21 @@ var waApi = function(username, password, opt) {
                             // see waxmpp.py:556 for some of the sordid details
                             console.log("*** " + fromAttribute + " says: " + msgdata);
                         }
-                        this.emit('message', messageNode);
+                        self.emit('message', messageNode);
                         emitMessage = false;
                         break;
                     case "request":
                         console.log("*** " + fromAttribute + " requests return receipt");
-                        this.sendMessageReceived(fromAttribute, msgId);
+                        self.sendMessageReceived(fromAttribute, msgId);
                         emitMessage = false;
                         break;
-                    case "notify":
+                    case "notify": 
                         console.log("*** " + fromAttribute + " sets notify_name=" + messageChildren[childNode].getAttributeValue("name"));
                         visibleName = messageChildren[childNode].getAttributeValue("name");
                         break;
                     case "server":
                         console.log("*** Server says it has accepted message " + msgId);
-                        this.emit('serverAccept', { from: fromAttribute, id: msgId });
+                        self.emit('serverAccept', { from: fromAttribute, id: msgId });
                         emitMessage = false;
                         break;
                     case "x": // why did someone called a stanza name "x"? what does that even -mean-?
@@ -395,9 +426,9 @@ var waApi = function(username, password, opt) {
         //console.log(messageNode);
         if(emitMessage) {
             console.log("emitting message back to service");
-            this.emit('message', messageNode);
+            self.emit('message', messageNode);
         }
-    }.bind(this));
+    }.bind(self));
 }
 
 util.inherits(waApi, EventEmitter);
@@ -435,14 +466,12 @@ waApi.prototype.sendSubjectReceived = function(to, msgId) {
     this.writer.write(messageNode);
 }
 
-// TODO: use sendMessageReceived
 waApi.prototype.sendMessageReceived = function(to, msgid) {
     var receivedNode = new ProtocolTreeNode("received", { "xmlns": "urn:xmpp:receipts" });
     var messageNode = new ProtocolTreeNode("message", { "to": to, "type": "chat", "id": msgid }, [ receivedNode ]);
     this.writer.write(messageNode);
 }
 
-// TODO: use sendDeliveredReceiptAck
 waApi.prototype.sendDeliveredReceiptAck = function(to, msgId) {
     this.writer.write(this.getReceiptAck(to, msgId, "delivered"));
 }
@@ -497,13 +526,9 @@ waApi.prototype.sendAvailable = function() {
     this.writer.write(presenceNode);
 }
 
-// TODO: This does not appear to work. Perhaps WA is not using the standard method?
-waApi.prototype.sendCustomStatus = function(status) {
-    /*var showNode = new ProtocolTreeNode("show", undefined, undefined, "chat");
-    var statusNode = new ProtocolTreeNode("status", undefined, undefined, status);
-    var presenceNode = new ProtocolTreeNode("presence", { "from": this.loginInfo.username+"@s.whatsapp.net", "xml:lang": "en" }, [ showNode, statusNode] );
-    this.writer.write(presenceNode);*/
-    this.sendMessageWithBody({ to: this.loginInfo.username + "@s.us", content: status });    
+// This might work. I can't see any changes from Android, but other people are reporting that they see a status update.
+waApi.prototype.sendStatusUpdate = function(status) {
+    this.sendMessageWithBody({ to: "s.us", content: status });    
 }
 
 // TODO: use sendUnavailable
@@ -516,12 +541,6 @@ waApi.prototype.sendUnavailable = function(status) {
 waApi.prototype.sendSubscribe = function(to) {
     var presenceNode = new ProtocolTreeNode("presence", { "type": "subscribe", "to": to });
     this.writer.write(presenceNode);
-}
-
-waApi.prototype.sendMessageWithBody = function(fmsg) {
-    var bodyNode = new ProtocolTreeNode("body", undefined, undefined, fmsg.content);
-    this.writer.write(this.getMessageNode(fmsg, bodyNode));
-    this.msgId++;
 }
 
 // TODO: use sendClientConfig
@@ -553,6 +572,101 @@ waApi.prototype.getMessageNode = function(fmsg, child) {
     var messageNode = new ProtocolTreeNode("message", { "to": fmsg.to, "type": "chat", "id": key.id }, messageChildren);
     return messageNode;
 }
+
+waApi.prototype.sendMessageWithBody = function(fmsg) {
+    var bodyNode = new ProtocolTreeNode("body", undefined, undefined, fmsg.content);
+    this.writer.write(this.getMessageNode(fmsg, bodyNode));
+    this.msgId++;
+}
+
+waApi.prototype.sendMessageWithMedia = function() {
+    
+}
+
+waApi.prototype.sendGetStatus = function(jid) {
+    var num = jid.indexOf('@');
+    if(num > -1) {
+        jid = jid.substring(0, num) + "@s.us";
+    }
+    var v = this.makeId("");
+    var actionnode = new ProtocolTreeNode("action", { type: "get" });
+    var node = new ProtocolTreeNode("message", { to: jid, type: "action", id: v }, [ actionnode ]);
+    this.writer.write(node);
+}
+
+waApi.prototype.sendNotificationReceived = function(jid, id) {
+    var child = new ProtocolTreeNode("received", { xmlns: "urn:xmpp:receipts" });
+    var node = new ProtocolTreeNode("message", { to: jid, type: "notification", id: id }, [ child ]);
+    this.writer.write(node);
+}
+
+waApi.prototype.sendPresenceSubscriptionRequest = function(to) {
+    var node = new ProtocolTreeNode("presence", { type: "subscribe", to: to });
+    this.writer.write(node);
+}
+
+waApi.prototype.sendRelayComplete = function(id, ms) {
+    var child = new ProtocolTreeNode("relay", { elapsed: ms });
+    var node = new ProtocolTreeNode("iq", { xmlns: "w:p:r", type: "result", to: "s.whatsapp.net", id: id }, [ child ]);
+    this.writer.write(node);
+}
+
+waApi.prototype.sendActive = function() {
+    this.writer.write(new ProtocolTreeNode("presence", { type: "active" }));
+}
+
+waApi.prototype.sendInactive = function() {
+    this.writer.write(new ProtocolTreeNode("presence", { type: "inactive" }));
+}
+
+waApi.prototype.sendRelayTimeout = function(id) {
+    var child = new ProtocolTreeNode("remote-server-timeout", { xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas" });
+    var child2 = new ProtocolTreeNode("error", { code: "504", type: "wait" }, [ child ] );
+    var node = new ProtocolTreeNode("iq", { xmlns: "w:p:r", type: "error", to: "s.whatsapp.net", id: id }, [ child2 ]);
+    this.writer.write(node);
+}
+
+waApi.prototype.sendUnsubscribeMe = function(jid) {
+    this.writer.write(new ProtocolTreeNode("presence", { type: "unsubscribe", to: jid }));
+}
+
+waApi.prototype.sendUnsubscribeHim = function(jid) {
+    this.writer.write(new ProtocolTreeNode("presence", { type: "unsubscribed", to: jid }));
+}
+
+waApi.prototype.sendDeleteFromRoster = function(jid) {
+    var v = this.makeId("roster_");
+    var child = new ProtocolTreeNode("item", { jid: jid, subscription: "remove" });
+    var child2 = new ProtocolTreeNode("query", { xmlns: "jabber:iq:roster" }, [ child ]);
+    var node = new ProtocolTreeNode("iq", { type: "set", id: v }, [ child2 ]);
+    this.writer.write(node);
+}
+
+waApi.prototype.sendClose = function() {
+    this.writer.write(new ProtocolTreeNode("presence", { type: "unavailable" }));
+    // TODO: implement this
+    // this.writer.streamEnd();
+}
+
+waApi.prototype.sendGetPrivacyList = function() {
+    var text = this.makeId("privacylist_");
+    var child = new ProtocolTreeNode("list", { name: "default" });
+    var child2 = new ProtocolTreeNode("query", { xmlns: "jabber:iq:privacy" }, [ child ]);
+    var node = new ProtocolTreeNode("iq", { id: text, type: "get" }, [ child2 ]);
+    this.writer.write(node);
+}
+
+waApi.prototype.sendSetPrivacyBlockedList = function(jidList) {
+    var listnodes = [];
+    for(var x = 0; x < jidList.length; x++) {
+        listnodes.push(new ProtocolTreeNode("item", { type: "jid", value: jidList[x], action: "deny", order: x }));
+    }
+    var child = new ProtocolTreeNode("list", { name: "default" }, listnodes);
+    var child2 = new ProtocolTreeNode("query", { xmlns: "jabber:iq:privacy" }, [ child ]);
+    var node = new ProtocolTreeNode("iq", { id: text, type: "set" }, [ child2 ]);
+    this.writer.write(node);
+}
+
 
 //var wa = new waApi("17079925233", "134529771563");
 //var wa = new waApi("19519993267", "134529771563");

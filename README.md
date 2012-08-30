@@ -36,6 +36,9 @@ Events:
 * message: emitted when we receive a full message, the entire ProtocolTreeNode is sent
 * serverAccept: emits { from: "userid-who-message-was-sent-to", id: "messageId" } when a message is accepted by the server (msgReceived should be emitted when the actual recipient has received the message)
 * message: also emitted when we receive something that looks like a message, but we have no idea how to parse it internally
+* connectionReplaced: when another WA client logs into your account, you'll receive this event
+* media: emits a bunch of information about media received - theoretically this works, but realistically, it does not, as media includes all sorts of data that doesn't fit into a single packet, so right now the packet reader blows up on it.
+
 
 Functions you can call:
 
@@ -44,8 +47,21 @@ Functions you can call:
 * getLastOnline(jid) - ask the server to tell us when someone was last seen
 * sendAvailable() - inform server we are available
 * sendAvailableForChat() - inform server we are available for chat (WA doesn't seem to care about that setting though)
-* sendCustomStatus(status) - tell the server of our custom status. Although WA accepts the message, it doesn't seem to propagate, so I'm guessing that they are using some non-standard method of doing this, and this method will need to be changed.
 * sendUnavailable() - inform server we are not available
 * sendMessageWithBody({ content: "Message Content", to: "userid to send to" }) - send a message
-
+* sendStatusUpdate(message) - update your custom status setting on the WA server - clients need to query this, somehow or other. I haven't yet located any way to subscribe to be automatically notified on status changes.
+* sendMessageWithMedia() - not implemented yet
+* sendGetStatus(jid) - should query the server for a status update from a user
+* sendNotificationReceived(jid, msgid) - untested
+* sendPresenceSubscriptionRequest(jid) - untested
+* sendRelayComplete(id, milliseconds) - untested
+* sendActive() - set status to Active - not sure how this differs from Available
+* sendInactive() - set status to Inactive - not sure how this differs from Unavailable
+* sendRelayTimeout - untested
+* sendUnsubscribeMe - untested
+* sendUnsunscribeHim - untested
+* sendDeleteFromRoster - untested
+* sendClose - currently mirrors sendUnavailable, should also inform the server we are closing down the connection
+* setGetPrivacyList() - request a "Privacy List". I believe this is a list of JIDs that are blocked from sending to us
+* sendSetPrivacyBlockedList([ jid array]) - send a list of users to set in Privacy List
 

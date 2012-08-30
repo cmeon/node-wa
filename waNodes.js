@@ -136,7 +136,7 @@ BinTreeNodeReader.prototype.streamStart = function() {
             var size = this.readListSize(tag);
             tag = this.inn[this.innPointer++];
             if(tag != 1) {
-                throw("Expecting tag 1 (STREAM_START) received " + tag);
+                throw("Expecting tag 1 (STREAM_START) received " + tag + ": " + this.getToken(tag));
             }
             var attribCount = (size - 2 + size % 2) / 2;
             var attributes = this.readAttributes(attribCount);
@@ -389,6 +389,7 @@ BinTreeNodeWriter.prototype.writeAttributes = function(attributes) {
     var buf = new Buffer("");
     if(attributes) {
         for(var x in attributes) {
+            //console.log("writing attribute " + x + ":" + attributes[x]);
             var key = this.writeString(x);
             var val = this.writeString(attributes[x]);
             buf = new Buffer(buf.toString("binary") + key.toString("binary") + val.toString("binary"), "binary");
@@ -398,11 +399,12 @@ BinTreeNodeWriter.prototype.writeAttributes = function(attributes) {
 }
 
 BinTreeNodeWriter.prototype.writeString = function(tag) {
+    //console.log("writeString: " + tag);
     var key = this.tokenMap[tag];
     if(key) {
         return this.writeToken(key);
     } else {
-        var atIndex = tag.indexOf('@');
+        var atIndex = tag ? tag.indexOf('@') : -1;
         if(atIndex < 1) {
             return this.writeBytes(tag);
         } else {
@@ -422,7 +424,7 @@ BinTreeNodeWriter.prototype.writeToken = function(intValue) {
 }
 
 BinTreeNodeWriter.prototype.writeBytes = function(bytes) {
-    var length = bytes.length;
+    var length = bytes ? bytes.length : 0;
     var buf;
     if(length >= 256) {
         buf = new Buffer("\xfd" + this.writeInt24(length).toString("binary"), "binary"); // 253
@@ -443,6 +445,9 @@ BinTreeNodeWriter.prototype.write = function(node, needsFlush) {
 }
 
 BinTreeNodeWriter.prototype.writeInternal = function(node) {
+    if(node.tag == undefined) {
+        console.log("writeInternal: *** WTF, node.tag is undefined, node=" + JSON.stringify(node));
+    }
     log.stream("outgoing:\n" + node);
     var attlength = 0;
     if(node.attributes) {
@@ -466,6 +471,7 @@ BinTreeNodeWriter.prototype.writeInternal = function(node) {
     if(node.children) {
         this.out = new Buffer(this.out.toString("binary") + this.writeListStart(node.children.length).toString("binary"), "binary");
         for(var c in node.children) {
+            //console.log("writing internal child " + JSON.stringify(node.children[c]));
             this.writeInternal(node.children[c]);
         }
     }

@@ -17,7 +17,7 @@ Here's how I basically make it do something:
 
 var waApi = require('testapi.js').waApi;
 
-var wa = new waApi(userId, password, { debug: true });
+var wa = new waApi(userId, password, { displayName: 'Blade', debug: true });
 
 It is an EventEmitter that will emit several events when things happen.  You can call different functions within it to 
 cause different things to happen.

@@ -363,7 +363,7 @@ var BinTreeNodeWriter = function(outputstream, dictionary, opt) {
 
 BinTreeNodeWriter.prototype.streamStart = function(domain, resource) {
     //var out = new Buffer("WA\x01\x00", "binary");
-    var out = new Buffer("WA\x00\x04", "binary");
+    var out = new Buffer("WA\x01\x01", "binary");
     this.realOut.write(out);
     
     var node = new ProtocolTreeNode("stream:stream", { "to": domain, "resource": resource } );

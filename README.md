@@ -19,6 +19,8 @@ var waApi = require('testapi.js').waApi;
 
 var wa = new waApi(userId, password, { displayName: 'Blade', debug: true });
 
+Your userId is the Phone Number that you have registered with WA, and your password should be either your device's MAC ID (for iOS) duplicated then MD5'd, such as md5("AA:BB:CC:DD:EE:FFAA:BB:CC:DD:EE:FF"), or the reverse of your device's IMEI number, then MD5'd, such as md5(strrev(device imei)) for all other WA systems besides iOS.
+
 It is an EventEmitter that will emit several events when things happen.  You can call different functions within it to 
 cause different things to happen.
 

@@ -673,7 +673,7 @@ waApi.prototype.sendSetPrivacyBlockedList = function(jidList) {
 exports.waApi = waApi;
 
 /*
- var ProtocolTreeNode = require('./waNodes.js').ProtocolTreeNode;
+ var ProtocolTreeNode = require('./index.js').ProtocolTreeNode;
 
 var treenodetest = new ProtocolTreeNode("html", undefined,
     [

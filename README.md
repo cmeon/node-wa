@@ -1,22 +1,22 @@
-node-wa
-=======
-
 # Node.js Whatsapp API Client
 
 Loosely based on the WhatsAPI and Wazapp projects that you can find on github. Appears to work in all versions of Node from 0.2 to 0.8.
 
-Here's how I basically make it do something:
+Usage example:
 
+```js
 var waApi = require('testapi.js').waApi;
 var wa = new waApi(userId, password, { displayName: 'Blade', debug: true });
+```
 
 Your userId is the Phone Number that you have registered with WA, and your password should be either your device's MAC ID (for iOS) duplicated then MD5'd, such as md5("AA:BB:CC:DD:EE:FFAA:BB:CC:DD:EE:FF"), or the reverse of your device's IMEI number, then MD5'd, such as md5(strrev(device imei)) for all other WA systems besides iOS.
 
-It is an EventEmitter that will emit several events when things happen.  You can call different functions within it to cause different things to happen.
+It is an EventEmitter that will emit several events when things happen. You can call different functions within it to cause different things to happen.
 
 At this time, if someone sends you custom image data, it'll probably crash out, as it has no idea how to parse it.
 
-## Events
+
+### Events
 
 * close: emitted when the connection to the server is closed
 * loggedin: emitted when the client is actually logged into the server
@@ -32,7 +32,7 @@ At this time, if someone sends you custom image data, it'll probably crash out, 
 * media: emits a bunch of information about media received - theoretically this works, but realistically, it does not, as media includes all sorts of data that doesn't fit into a single packet, so right now the packet reader blows up on it.
 
 
-## Functions
+### Functions
 
 * sendTyping(jid) - inform server that you are typing
 * sendPaused(jid) - inform server that you are not typing
@@ -57,6 +57,6 @@ At this time, if someone sends you custom image data, it'll probably crash out, 
 * setGetPrivacyList() - request a "Privacy List". I believe this is a list of JIDs that are blocked from sending to us
 * sendSetPrivacyBlockedList([ jid array]) - send a list of users to set in Privacy List
 
-## Author & Credits
+### Author & Credits
 * Original Author - https://github.com/ericblade
 * Thanks to vkotovv for the fix for login issues Aug 29!

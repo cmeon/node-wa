@@ -1,8 +1,8 @@
 var net = require('net');
-var base64 = require('libs/base64');
+var base64 = require('./libs/base64');
 var crypto = require('crypto');
 var fs = require('fs');
-var uuid = require('libs/uuid');
+var uuid = require('./libs/uuid');
 
 function md5(x) {
     return crypto.createHash('md5').update(x).digest("hex");
@@ -109,7 +109,7 @@ if(process.version == "v0.2.3") {
     util = require('util');
 }
 
-var nodes = require('libs/whatsapp');
+var nodes = require('./libs/whatsapp');
 var ProtocolTreeNode = nodes.ProtocolTreeNode;
 var BinTreeNodeWriter = nodes.BinTreeNodeWriter;
 var BinTreeNodeReader = nodes.BinTreeNodeReader;
@@ -140,7 +140,7 @@ var waApi = function(username, password, opt) {
             new ProtocolTreeNode("receipt_acks"),
             // TODO: enabling this throws a stream:error at the moment.. bad dictionary?
             //new ProtocolTreeNode("w:profile:picture", { type: "all" }),
-            new ProtocolTreeNode("status"),
+            new ProtocolTreeNode("status")
         ];
         var toWrite = new ProtocolTreeNode("stream:features", { }, features);
         
@@ -1316,5 +1316,5 @@ const dictionary =
         "max", "offline", "proceed", "required", "sync", "elapsed", "ip", "microsoft", "mute", "nokia", "off", "pin", // 215-226
         "pop_mean_time", "pop_plus_minus", "port", "reason", "server-error", "silent", "timeout", "lc", "lg", "bad-protocol", // 227-236
         "none", "remote-server-timeout", "service-unavailable", //"w:p"
-        undefined, "w:profile:picture", "notification", // 237-242        
+        undefined, "w:profile:picture", "notification" // 237-242
     ];

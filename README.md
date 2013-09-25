@@ -5,7 +5,7 @@ Loosely based on the WhatsAPI and Wazapp projects that you can find on github. A
 Usage example:
 
 ```js
-var waApi = require('testapi.js').waApi;
+var waApi = require('node-wa');
 var wa = new waApi(userId, password, { displayName: 'Blade', debug: true });
 ```
 
